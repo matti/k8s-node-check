@@ -1,8 +1,10 @@
 # k8s-node-check
 
-Creates one (1) pod on every node and deletes it in a loop.
+Tests if your nodes are getting slow in pod creation / termination.
 
-If creation/termination takes long, it marks nodes as `PIDPressure` status that is removed by kubelet if it's healthy.
+k8s-node-check creates one (1) pod on every node and deletes it in a loop.
+
+If the creation/termination takes too long, it marks the node as `PIDPressure` status/taint that is then removed by kubelet if it's healthy.
 
 ```console
 k8s-node-check -create 10s -terminate 15s -every 5s
