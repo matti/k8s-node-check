@@ -6,7 +6,7 @@ k8s-node-check creates one (1) pod on every node and deletes it in a loop.
 
 If the creation/termination takes too long, it marks the node as `PIDPressure` status/taint that is then removed by kubelet if it's healthy.
 
-Also checks for pods that are older than their node (kubernetes bug with spot instance replacement) and force deletes them.
+It also checks for pods that are older than their node (kubernetes bug with spot instance replacement) and force deletes them.
 
 ```console
 $ k8s-node-check -create 10s -terminate 15s -every 5s -pods=10m

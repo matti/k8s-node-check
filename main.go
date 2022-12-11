@@ -227,6 +227,10 @@ func main() {
 						updateNodeStatus(node)
 					}
 				}
+			case "Failed":
+				log.Println("PROBLEM", "FAILED", pod.Spec.NodeName, pod.Status.Reason)
+				updateNodeStatus(node)
+				deletePodForce(pod)
 			default:
 				log.Println("UNKNOWN", "PHASE", pod.Status.Phase)
 			}
