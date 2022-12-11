@@ -13,3 +13,5 @@ $ k8s-node-check -create 10s -terminate 15s -every 5s
 ```
 
 docker image at <https://github.com/matti/k8s-node-check/pkgs/container/k8s-node-check>
+
+Bonus: also checks for pods that are older than their node (kubernetes bug with spot instance replacement) and force deletes them.

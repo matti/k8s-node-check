@@ -28,6 +28,14 @@ func deletePod(pod corev1.Pod) {
 	clientset.CoreV1().Pods(pod.Namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
 }
 
+func deletePodForce(pod corev1.Pod) {
+	force := int64(0)
+
+	clientset.CoreV1().Pods(pod.Namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{
+		GracePeriodSeconds: &force,
+	})
+}
+
 func updateNodeStatus(node *corev1.Node) {
 	var nodeConditions []corev1.NodeCondition
 
@@ -97,10 +105,32 @@ func main() {
 		}
 
 		nodeNames := make(map[string]*corev1.Node)
-
 		for _, node := range nodes.Items {
 			nodeNames[node.Name] = node.DeepCopy()
+		}
 
+		if pods, err := clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{}); err != nil {
+			continue
+		} else {
+			for _, pod := range pods.Items {
+				if pod.ObjectMeta.DeletionTimestamp == nil {
+					continue
+				}
+				node := nodeNames[pod.Spec.NodeName]
+				if node == nil {
+					continue
+				}
+
+				nodeAge := time.Since(node.CreationTimestamp.Time)
+				podAge := time.Since(pod.CreationTimestamp.Time)
+
+				if podAge > nodeAge {
+					deletePodForce(pod)
+				}
+			}
+		}
+
+		for _, node := range nodes.Items {
 			if node.Spec.Unschedulable {
 				//log.Println("node", node.Name, "unschedulable")
 				continue
