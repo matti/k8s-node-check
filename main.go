@@ -58,11 +58,13 @@ func main() {
 		create    time.Duration
 		terminate time.Duration
 		every     time.Duration
+		pods      time.Duration
 	}
 
 	flag.DurationVar(&settings.create, "create", 10*time.Second, "")
 	flag.DurationVar(&settings.terminate, "terminate", 15*time.Second, "")
 	flag.DurationVar(&settings.every, "every", 5*time.Second, "")
+	flag.DurationVar(&settings.pods, "pods", 10*time.Minute, "")
 
 	flag.Parse()
 	var config *rest.Config
@@ -95,6 +97,8 @@ func main() {
 		break
 	}
 
+	podsLastCheckedAt := time.Now().Add(-settings.pods)
+
 	for {
 		startedAt := time.Now()
 
@@ -109,25 +113,29 @@ func main() {
 			nodeNames[node.Name] = node.DeepCopy()
 		}
 
-		if pods, err := clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{}); err != nil {
-			continue
-		} else {
-			for _, pod := range pods.Items {
-				if pod.ObjectMeta.DeletionTimestamp == nil {
-					continue
-				}
-				node := nodeNames[pod.Spec.NodeName]
-				if node == nil {
-					continue
-				}
+		if time.Since(podsLastCheckedAt) > settings.pods {
+			if pods, err := clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{}); err != nil {
+				continue
+			} else {
+				for _, pod := range pods.Items {
+					if pod.ObjectMeta.DeletionTimestamp == nil {
+						continue
+					}
+					node := nodeNames[pod.Spec.NodeName]
+					if node == nil {
+						continue
+					}
 
-				nodeAge := time.Since(node.CreationTimestamp.Time)
-				podAge := time.Since(pod.CreationTimestamp.Time)
+					nodeAge := time.Since(node.CreationTimestamp.Time)
+					podAge := time.Since(pod.CreationTimestamp.Time)
 
-				if podAge > nodeAge {
-					deletePodForce(pod)
+					if podAge > nodeAge {
+						deletePodForce(pod)
+					}
 				}
 			}
+
+			podsLastCheckedAt = time.Now()
 		}
 
 		for _, node := range nodes.Items {
@@ -196,7 +204,7 @@ func main() {
 
 			switch pod.Status.Phase {
 			case "Pending":
-				if nodeAge < time.Minute*1 {
+				if nodeAge < time.Minute*3 {
 					//log.Println("node", node.Name, nodeAge, "too young")
 					break
 				}
